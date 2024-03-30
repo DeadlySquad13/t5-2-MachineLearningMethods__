@@ -1,33 +1,58 @@
 # %%
 # Loading extension for reloading editable packages (pip install -e .)
-%load_ext autoreload
+# %load_ext autoreload
 
 # %%
 # Reloading editable packages.
-%autoreload
-from lab1.main import get_results
+# %autoreload
+# from lab1.main import get_results
+
+import bokeh
+# %%
+import datashader as ds  # noqa
+import holoviews as hv
+import panel as pn
+from packaging.version import Version
+
+min_versions = dict(ds="0.15.1", bokeh="3.2.0", hv="1.16.2", pn="1.2.0")
+
+for lib, ver in min_versions.items():
+    v = globals()[lib].__version__
+    if Version(v) < Version(ver):
+        print("Error: expected {}={}, got {}".format(lib, ver, v))
 
 # %%
-def visualize_states(states_stats):
-    import matplotlib.pyplot as plt
-    import numpy as np
+hv.extension("bokeh", "matplotlib")
 
-    plt.style.use('_mpl-gallery')
+# %%
+import pathlib
 
-    # make data:
-    x = 0.5 + np.arange(8)
-    y = states_stats
+try:
+    import pandas as pd
 
-    # plot
-    fig, ax = plt.subplots()
+    columns = ["depth", "id", "latitude", "longitude", "mag", "place", "time", "type"]
+    path = pathlib.Path("../../data/earthquakes-projected.parq")
+    df = pd.read_parquet(path, columns=columns, engine="fastparquet")
+    df.head()
+except RuntimeError as e:
+    print("The data cannot be read: %s" % e)
 
-    ax.bar(x, y, width=1, edgecolor="white", linewidth=0.7)
+# %%
+print(df.shape)
+df.head()
 
-    ax.set(xlim=(0, 8), xticks=np.arange(1, 8),
-           ylim=(0, 8), yticks=np.arange(1, 8))
+# %%
+small_df = df.sample(frac=0.01)
+print(small_df.shape)
+small_df.head()
 
-    plt.show()
+# %%
+# %matplotlib inline
 
+# %%
+small_df.plot.scatter(x="longitude", y="latitude")
 
-get_results()
-visualize_states()
+# %%
+import hvplot.pandas
+
+small_df.hvplot.scatter(x="longitude", y="latitude")
