@@ -15,3 +15,7 @@ install-dev-ju: requirements.txt
 install-dev-ju-nvim: requirements.txt
 	make install-dev-ju
 	pip install -r requirements_dev_ju_nvim.txt
+
+regenerate-requirements: src
+	pigar generate src
+
