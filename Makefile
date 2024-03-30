@@ -24,3 +24,5 @@ regenerate-requirements: src
 start-jupynium:
 	jupynium --notebook_URL localhost:18888 --nvim_listen_addr localhost:18898
 
+mine-earthquakes-data: src/lab1/mine_earthquake_data.py
+	python $^
