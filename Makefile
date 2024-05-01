@@ -6,6 +6,7 @@ install: requirements.txt
 
 install-dev: requirements.txt requirements_dev.txt 
 	make install
+	pip install -r requirements_dev.txt
 	pip install -e .
 
 install-dev-ju: requirements.txt 
