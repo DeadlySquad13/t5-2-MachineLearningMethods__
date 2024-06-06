@@ -4,6 +4,10 @@ run:
 install: requirements.txt
 	pip install -r requirements.txt
 
+install-text-processing: requirements_text_processing.txt
+	pip install -r requirements_text_processing.txt
+	python -m spacy download ru_core_news_sm
+
 install-dev: requirements.txt requirements_dev.txt 
 	make install
 	pip install -r requirements_dev.txt
