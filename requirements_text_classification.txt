@@ -1,0 +1,5 @@
+
+# For gensim compatibility
+# See: https://stackoverflow.com/questions/78279136/importerror-cannot-import-name-triu-from-scipy-linalg-when-importing-gens.
+scipy<1.13.0
+gensim==4.3.2
