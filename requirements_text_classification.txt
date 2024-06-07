@@ -1,5 +1,6 @@
-
 # For gensim compatibility
 # See: https://stackoverflow.com/questions/78279136/importerror-cannot-import-name-triu-from-scipy-linalg-when-importing-gens.
 scipy<1.13.0
+# 12.1 cuda version (we have 12.4 but it's poorly supported everywhere as of 2024.06.07)
+spacy[cuda121]
 gensim==4.3.2

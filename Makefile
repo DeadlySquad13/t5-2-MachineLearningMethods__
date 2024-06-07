@@ -8,6 +8,10 @@ install-text-processing: requirements_text_processing.txt
 	pip install -r requirements_text_processing.txt
 	python -m spacy download ru_core_news_sm
 
+install-text-classification: requirements_text_classification.txt
+	pip install -r requirements_text_classification.txt
+	python -m spacy download en_core_web_sm
+
 install-dev: requirements.txt requirements_dev.txt 
 	make install
 	pip install -r requirements_dev.txt
