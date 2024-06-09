@@ -80,7 +80,7 @@ def grouped_bar_chart(ax, data: dict[str, list[float]],
 
 
 # %%
-def show_metrics_grouped_bar_chart(metrics_data: dict[str, dict[str, float]]):
+def get_metrics_grouped_bar_chart(metrics_data: dict[str, dict[str, float]]):
     """ Creates grouped bar chart for metrics.
     :param metrics_data: a dictionary of metrics and their values for each
         model.
@@ -88,6 +88,7 @@ def show_metrics_grouped_bar_chart(metrics_data: dict[str, dict[str, float]]):
 
         Example:
 
+        # Accuracy, a, b and Roc will be on x-axis.
         metrics_data = {
             'GridSearchCV': { 
                 'Accuracy': 1,
@@ -101,8 +102,17 @@ def show_metrics_grouped_bar_chart(metrics_data: dict[str, dict[str, float]]):
             },
         }
 
+    :usage You can use returned matplotlib instances as usual, for example:
+        models_bar_chart = get_metrics_grouped_bar_chart(metrics_data_per_model)
+        models_bar_chart["plt"].title('Сравнение моделей по разным метрикам')
+        models_bar_chart["plt"].xlabel('Метрика')
+        models_bar_chart["plt"].ylabel('Значение')
+
+        models_bar_chart["ax"].legend(title='Модель', bbox_to_anchor=(1.2, 1))
+
+        models_bar_chart["plt"].show()
+
     """
-    # plt.figure(figsize=(7,3))
     width = 15
     height = 15
     plt.rcParams['figure.figsize'] = width, height
