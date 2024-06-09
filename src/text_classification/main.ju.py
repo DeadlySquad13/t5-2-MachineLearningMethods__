@@ -258,6 +258,22 @@ X_train, X_test, y_train, y_test = train_test_split(
     random_state=RANDOM_SEED
 )
 
+# %% [markdown]
+# Аналогичные выборки сделаем для моделей, которые в себя принимают список
+# строк, а не список токенов.
+
+# %%
+X_str = [spacy_text.text for spacy_text in corpus]
+
+# %%
+from sklearn.model_selection import train_test_split
+
+X_str_train, X_str_test, y_str_train, y_str_test = train_test_split(
+    X_str, y,
+    test_size=0.33,
+    random_state=RANDOM_SEED
+)
+
 
 # %% [markdown]
 # ### Составим pipeline
@@ -353,7 +369,7 @@ class EmbeddingVectorizer(object):
 from sklearn.pipeline import Pipeline
 
 
-def classifier_pipeline(v, c, scaler=None):
+def classifier_pipeline(v, c, scaler=None, corpus_already_tokenized=True):
     pipeline_steps = [
         ("vectorizer", v), 
     ]
@@ -365,10 +381,22 @@ def classifier_pipeline(v, c, scaler=None):
 
     pipeline = Pipeline(pipeline_steps)
 
-    pipeline.fit(X_train, y_train)
-    y_pred = pipeline.predict(X_test)
+    classifier_X_train = X_train
+    classifier_y_train = y_train
+    classifier_X_test = X_test
+    classifier_y_test = y_test
 
-    return print_accuracy_score_for_classes(y_test, y_pred)
+    if not corpus_already_tokenized:
+        classifier_X_train = X_str_train
+        classifier_y_train = y_str_train
+        classifier_X_test = X_str_test
+        classifier_y_test = y_str_test
+
+    pipeline.fit(classifier_X_train, classifier_y_train)
+    y_pred = pipeline.predict(classifier_X_test)
+
+    return print_accuracy_score_for_classes(classifier_y_test, y_pred)
+
 
 # %% [markdown]
 # ### Проверка результатов
@@ -381,7 +409,7 @@ metrics_data: dict[ClassifierName, dict[ModelName, float]] = {}
 
 # %%
 def add_metrics_data(classier_name: ClassifierName, model_name: ModelName, results: pd.DataFrame):
-    if not metrics_data[classier_name]:
+    if not metrics_data.get(classier_name):
         metrics_data[classier_name] = {}
 
     metrics_data[classier_name][model_name] = np.mean(results['Точность'])
@@ -390,7 +418,7 @@ def add_metrics_data(classier_name: ClassifierName, model_name: ModelName, resul
 
 
 # %% [markdown]
-# Протестируем собственно-обученную модель Word2Vec.
+# ### Протестируем собственно-обученную модель Word2Vec.
 
 # %% [markdown]
 # #### LogisticRegression
@@ -437,7 +465,7 @@ classifier_pipeline(EmbeddingVectorizer(model_trained_on_dataset.wv), DecisionTr
 add_metrics_data("DecisionTreeClassifier", "our w2v", classifier_pipeline(EmbeddingVectorizer(model_trained_on_dataset.wv), DecisionTreeClassifier(max_depth=200, criterion="gini")))
 
 # %% [markdown]
-# Протестируем предобученную модель от google Word2Vec.
+# ### Протестируем предобученную модель от google Word2Vec.
 
 # %% [markdown]
 # #### LogisticRegression
@@ -476,6 +504,48 @@ add_metrics_data("KNeighborsClassifier", "google w2v", classifier_pipeline(Embed
 from sklearn.tree import DecisionTreeClassifier
 
 add_metrics_data("DecisionTreeClassifier", "google w2v", classifier_pipeline(EmbeddingVectorizer(word2vec_google_news_300_model), DecisionTreeClassifier(max_depth=200, criterion="gini")))
+
+# %% [markdown]
+# ### TFIDF
+# Scaler не нужен (и его даже невозможно применить, ведь tfidf возвращает
+# разреженную матрицу)
+
+# %%
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+tfidf = TfidfVectorizer(ngram_range=(1,3))
+
+# %% [markdown]
+# #### LogisticRegression
+
+# %%
+add_metrics_data("LogisticRegression", "tfidf", classifier_pipeline(tfidf, LogisticRegression(C=5.0), corpus_already_tokenized=False))
+
+# %% [markdown]
+# #### MultinomialNaiveBayes
+
+# %%
+from sklearn.naive_bayes import MultinomialNB
+
+# NB нужны неотрицательные значения.
+add_metrics_data("MultinomialNB", "tfidf", classifier_pipeline(tfidf, MultinomialNB(), corpus_already_tokenized=False))
+
+# %% [markdown]
+# #### KNeighborsClassifier
+
+# %%
+from sklearn.neighbors import KNeighborsClassifier
+
+# KNC нужны значения, распределённые по нормальному распределению.
+add_metrics_data("KNeighborsClassifier", "tfidf", classifier_pipeline(tfidf, KNeighborsClassifier(n_neighbors=15), corpus_already_tokenized=False))
+
+# %% [markdown]
+# #### DecisionTreeClassifier
+
+# %%
+from sklearn.tree import DecisionTreeClassifier
+
+add_metrics_data("DecisionTreeClassifier", "tfidf", classifier_pipeline(tfidf, DecisionTreeClassifier(max_depth=200, criterion="gini"), corpus_already_tokenized=False))
 
 # %% [markdown]
 """
@@ -555,11 +625,14 @@ def grouped_bar_chart(ax, data: dict[str, list[float]],
         # Add a handle to the last drawn bar, which we'll need for the legend.
         # bars.append(bars[0])
 
-        ax.bar_label(rects, padding=3)
+        # Add label (value) above each bar. Format it to 5 fixed numbers after
+        # comma.
+        ax.bar_label(rects, fmt="%0.5f", padding=3)
 
     ax.set_xticks(tick_locations, labels=tick_labels)
 
 
+# %%
 def show_metrics_grouped_bar_chart(metrics_data: dict[str, dict[str, float]]):
     """ Creates grouped bar chart for metrics.
     :param metrics_data: a dictionary of metrics and their values for each
@@ -621,7 +694,7 @@ def show_metrics_grouped_bar_chart(metrics_data: dict[str, dict[str, float]]):
     
     grouped_bar_chart(ax, filled_metrics_data, tick_labels=tick_labels,
                       total_width=.8, single_width=.9, colors=['#aadddd',
-                          '#eebbbb', '#ccbbbb', '#77bb77'])
+                          '#eebbbb', '#ccbbbb', '#77bb77', "#cb9978"])
 
     plt.title('Сравнение моделей и классификаторов')
     plt.xlabel('Модель')
@@ -629,8 +702,41 @@ def show_metrics_grouped_bar_chart(metrics_data: dict[str, dict[str, float]]):
 
     ax.legend(title='Классификатор', bbox_to_anchor=(1.2, 1))
 
-    plt.yscale('log')
+    # plt.yscale('log')
     plt.show()
 
 # %%
 show_metrics_grouped_bar_chart(metrics_data)
+
+# %% [markdown]
+"""
+> У TFIDF нет "LogisticRegression with scaler", потому что scaler не нужен (и его невозможно применить для разреженной матрицы).
+"""
+
+# %% [markdown]
+"""
+## Вывод
+Как видно по графику сравнения моделей и классификаторов, наиболее успешной оказалась связка word2vector, предобученная google, и логистической регрессии со scaler'ом.
+
+В среднем, модель от google продемонстрировала самый высокий результат для любого классификатора. Единственное исключение - логистическая регрессия для tfidf. Это комбинация показала
+очень хороший результат, который лишь немного отстаёт от лучших значений google word2vector.
+
+Так, видно, что в среднем tfidf достигает показателей лишь на 2-5 процентов хуже google2vector. Учитывая простоту алгоритма, это удивительный результат.
+
+Обученная нами модель word2vec даёт в лучшем варианте 86%, что является вполне приемлемым. Однако в среднем у неё самые плохие результаты среди рассматриваемых моделей.
+Это довольно неожиданно, ведь обучение и тренировка на данных из одной предметной области должны были дать лучшее качество.
+
+Пытаясь найти причины, первым приходит на ум недостаток данных: наш набор не очень спефичный и на несколько порядков меньше набора данных google. Но в то же время
+объём нашей выборки хоть и составляет несколько тысяч строк, в каждой из них есть ячейка с содержанием полноценной статьи, то есть количество токенов должно отвечать
+запросам word2vec.
+
+Вероятно, первопричина кроется в качестве самого обучения: мы мало проводили работы с корпусом токенов. Сразу после разбиения текста с помощью `spacy`
+на токены, мы отправили модель обучаться. Вполне возможно, дополнительные оптимизации на уровне предложений и языка поспособствовали бы улучшению качества
+модели. Например, устранение стоп-слов или очень частых слов, несущих малый смысл в рамках нашей задачи (союзы, предлоги), из выборки. На это ещё больше
+намекает хороший результат TFIDF, ведь он эти оптимизации проводит "автоматически" ввиду особенностей формулы.
+
+Таким образом, мы обучили три модели и сравнили показатели. Каждая из них даёт хорошие результаты в классификации, однако у всех моделей есть большой недостаток -
+неумение работать со словами, не присутствующими в выборке. Наименее заметно это в google word2vector, ведь в ней набор данных колоссальный, однако если стоит задача
+обрабатывать любые слова, лучше подойдёт принципиально модифицированная модель, например, fast2text.
+"""
+
