@@ -20,7 +20,7 @@
 # %%
 # Reloading editable packages.
 # %autoreload
-from charts.main import grouped_bar_chart, get_metrics_grouped_bar_chart
+from charts.main import get_metrics_grouped_bar_chart
 
 # %%
 RANDOM_SEED = 13
